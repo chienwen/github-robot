@@ -1,0 +1,17 @@
+{
+  "name": "githubrobot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "run.js",
+  "scripts": {
+    "example": "node example.js",
+    "plurk": "node plurk.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "chienwen",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@octokit/rest": "^18.0.15",
+    "base-64": "^1.0.0"
+  }
+}
