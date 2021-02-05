@@ -10,12 +10,17 @@ const argOptions = dashdash.parse({options: [
         name: 'fetch-count-limit',
         type: 'positiveInteger',
         help: 'Max number of plurks to fetch. Omit this option to make it unlimited.'
+    },
+    {
+        name: 'fetch-batch-size',
+        type: 'positiveInteger',
+        help: 'Max number of plurks to fetch per batch. Max seems 30.'
     }
 ]});
 
 const GITHUB_OWNER = 'chienwen';
 const GITHUB_REPO = "blahblah";
-const FETCH_BATCH_SIZE = 100;
+const FETCH_BATCH_SIZE = argOptions.fetch_batch_size || 20;
 const FETCH_COUNT_LIMIT = argOptions.fetch_count_limit || Number.MAX_VALUE;
 const META_USER_AGENT_STRING = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36';
 const META_DESC_LENGTH_MAX = 1000;
@@ -85,7 +90,7 @@ function processPlurk(plurk) {
                 resc: plurk.response_count
             }
         };
-        const m = data.ct.replace(/\n/g, ' ').match(/^(.*)(https?:\/\/.+)/);
+        const m = data.ct.replace(/\n/g, ' ').trim().match(/^(.*)(https?:\/\/[^ ]+)$/);
         if (m) {
             data.ct = m[1].trim();
             data.plat.ctr = plurk.content_raw;
