@@ -1,8 +1,8 @@
 const { GitHubOperator } = require('./lib/github');
 const plurk = require('./lib/plurk');
+const enrichRes = require('./lib/enrichRes');
 const dashdash = require('dashdash');
 const _ = require('lodash');
-const urlMetadata = require('url-metadata');
 const imageToBase64 = require('image-to-base64');
 
 const argOptions = dashdash.parse({options: [
@@ -22,8 +22,6 @@ const GITHUB_OWNER = 'chienwen';
 const GITHUB_REPO = "blahblah";
 const FETCH_BATCH_SIZE = argOptions.fetch_batch_size || 20;
 const FETCH_COUNT_LIMIT = argOptions.fetch_count_limit || Number.MAX_VALUE;
-const META_USER_AGENT_STRING = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36';
-const META_DESC_LENGTH_MAX = 1000;
 
 const github = new GitHubOperator(GITHUB_OWNER, GITHUB_REPO);
 
@@ -43,36 +41,19 @@ const util = {
 
 function extractExtendedResource(url, dObj) {
     return new Promise((resolve, reject) => {
-        const res = {};
         if (token = url.match(/^https:\/\/images\.plurk\.com\/([^\/]+)$/)) {
-            res.cache = {
-                type: 'pl',
-                name: token[1]
+            const res = {
+                cache: {
+                    type: 'pl',
+                    name: token[1]
+                }
             };
             imageToBase64(url).then((data) => {
                 plurkImages[util.getYearMonth(dObj).join('/') + '/' + res.cache.name] = data;
                 resolve(res);
             }).catch(reject);
         } else {
-            urlMetadata(url, {
-                userAgent: META_USER_AGENT_STRING,
-                descriptionLength: META_DESC_LENGTH_MAX,
-                customHeaders: {
-                    'cookie': 'over18=1'
-                }
-            }).then((metadata) => {
-                const newRes = {
-                    title: metadata.title || metadata['og:title'],
-                    desc: metadata.description || metadata['og:description'],
-                    iurl: metadata.image || metadata['og:image'],
-                };
-                Object.keys(newRes).forEach((k) => {
-                    if (newRes[k]) {
-                        res[k] = newRes[k];
-                    }
-                });
-                resolve(res);
-            }, reject)
+            enrichRes(url).then(resolve).catch(reject);
         }
     });
 }
