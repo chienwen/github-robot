@@ -1,6 +1,6 @@
-const { GitHubOperator } = require('./lib/github');
 const plurk = require('./lib/plurk');
 const enrichRes = require('./lib/enrichRes');
+const githubManager = require('./lib/githubManager');
 const dashdash = require('dashdash');
 const _ = require('lodash');
 const imageToBase64 = require('image-to-base64');
@@ -18,12 +18,8 @@ const argOptions = dashdash.parse({options: [
     }
 ]});
 
-const GITHUB_OWNER = 'chienwen';
-const GITHUB_REPO = "blahblah";
 const FETCH_BATCH_SIZE = argOptions.fetch_batch_size || 20;
 const FETCH_COUNT_LIMIT = argOptions.fetch_count_limit || Number.MAX_VALUE;
-
-const github = new GitHubOperator(GITHUB_OWNER, GITHUB_REPO);
 
 const processPlurkPromises = [];
 const plurkImages = {};
@@ -34,10 +30,6 @@ const util = {
         return [dObj.getUTCFullYear().toString().substr(2), _.padStart(dObj.getUTCMonth() + 1, 2, '0')];
     }
 };
-
-//github.createOrUpdate('pizza/hut.c', "#include<stdio.h>\nint main() { return0; }\n" + Math.random())
-//    .then((data) => { console.error('ok', data.status) })
-//    .catch((err) => { console.error('error', err) });
 
 function extractExtendedResource(url, dObj) {
     return new Promise((resolve, reject) => {
@@ -129,8 +121,16 @@ function backupPlurkDone(isEndByCountLimit) {
             }
             monthlyData[fileName][plurk.id] = plurk;
         });
-        console.log(monthlyData);
-        console.log(plurkImages);
+        const githubTaskPromises = [];
+        Object.keys(monthlyData).forEach((fileName) => {
+            githubTaskPromises.push(githubManager.publishDiary(fileName, monthlyData[fileName]));
+        });
+        Object.keys(plurkImages).forEach((fileName) => {
+            githubTaskPromises.push(githubManager.publishPlurkImage(fileName, plurkImages[fileName]));
+        });
+        Promise.all(githubTaskPromises).then((finishedTask) => {
+            console.log('All done!');
+        });
     });
 }
 
