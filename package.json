@@ -15,7 +15,6 @@
     "@octokit/rest": "^18.0.15",
     "base-64": "^1.0.0",
     "dashdash": "^2.0.0",
-    "image-to-base64": "^2.1.1",
     "lodash": "^4.17.20",
     "oauth": "^0.9.15",
     "url-metadata": "git://github.com:chienwen/url-metadata.git"

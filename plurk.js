@@ -3,7 +3,6 @@ const enrichRes = require('./lib/enrichRes');
 const githubDiary = require('./lib/githubDiary');
 const dashdash = require('dashdash');
 const _ = require('lodash');
-const imageToBase64 = require('image-to-base64');
 
 const argOptions = dashdash.parse({options: [
     {
@@ -22,7 +21,6 @@ const FETCH_BATCH_SIZE = argOptions.fetch_batch_size || 20;
 const FETCH_COUNT_LIMIT = argOptions.fetch_count_limit || Number.MAX_VALUE;
 
 const processPlurkPromises = [];
-const plurkImages = {};
 let fetchedCount = 0;
 
 const util = {
@@ -34,16 +32,7 @@ const util = {
 function extractExtendedResource(url, dObj) {
     return new Promise((resolve, reject) => {
         if (token = url.match(/^https:\/\/images\.plurk\.com\/([^\/]+)$/)) {
-            const res = {
-                cache: {
-                    type: 'pl',
-                    name: token[1]
-                }
-            };
-            imageToBase64(url).then((data) => {
-                plurkImages[util.getYearMonth(dObj).join('/') + '/' + res.cache.name] = data;
-                resolve(res);
-            }).catch(reject);
+            resolve({});
         } else {
             enrichRes(url).then(resolve).catch(reject);
         }
@@ -126,11 +115,6 @@ function backupPlurkDone(isEndByCountLimit) {
             for (let i = 0; i < listOfFileNames.length; i++) {
                 let fileName = listOfFileNames[i];
                 await githubDiary.publishDiary(fileName, monthlyData[fileName]);
-            }
-            const listOfPlurkImages = Object.keys(plurkImages);
-            for (let i = 0; i < listOfPlurkImages.length; i++) {
-                let fileName = listOfPlurkImages[i];
-                //await githubDiary.publishPlurkImage(fileName, plurkImages[fileName]);
             }
             console.log('all done');
         }();
