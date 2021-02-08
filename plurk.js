@@ -1,6 +1,6 @@
 const plurk = require('./lib/plurk');
 const enrichRes = require('./lib/enrichRes');
-const githubManager = require('./lib/githubManager');
+const githubDiary = require('./lib/githubDiary');
 const dashdash = require('dashdash');
 const _ = require('lodash');
 const imageToBase64 = require('image-to-base64');
@@ -125,12 +125,12 @@ function backupPlurkDone(isEndByCountLimit) {
             const listOfFileNames = Object.keys(monthlyData);
             for (let i = 0; i < listOfFileNames.length; i++) {
                 let fileName = listOfFileNames[i];
-                await githubManager.publishDiary(fileName, monthlyData[fileName]);
+                await githubDiary.publishDiary(fileName, monthlyData[fileName]);
             }
             const listOfPlurkImages = Object.keys(plurkImages);
             for (let i = 0; i < listOfPlurkImages.length; i++) {
                 let fileName = listOfPlurkImages[i];
-                await githubManager.publishPlurkImage(fileName, plurkImages[fileName]);
+                //await githubDiary.publishPlurkImage(fileName, plurkImages[fileName]);
             }
             console.log('all done');
         }();
