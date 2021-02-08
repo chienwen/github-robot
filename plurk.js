@@ -121,16 +121,19 @@ function backupPlurkDone(isEndByCountLimit) {
             }
             monthlyData[fileName][plurk.id] = plurk;
         });
-        const githubTaskPromises = [];
-        Object.keys(monthlyData).forEach((fileName) => {
-            githubTaskPromises.push(githubManager.publishDiary(fileName, monthlyData[fileName]));
-        });
-        Object.keys(plurkImages).forEach((fileName) => {
-            githubTaskPromises.push(githubManager.publishPlurkImage(fileName, plurkImages[fileName]));
-        });
-        Promise.all(githubTaskPromises).then((finishedTask) => {
-            console.log('All done!');
-        });
+        ~async function() {
+            const listOfFileNames = Object.keys(monthlyData);
+            for (let i = 0; i < listOfFileNames.length; i++) {
+                let fileName = listOfFileNames[i];
+                await githubManager.publishDiary(fileName, monthlyData[fileName]);
+            }
+            const listOfPlurkImages = Object.keys(plurkImages);
+            for (let i = 0; i < listOfPlurkImages.length; i++) {
+                let fileName = listOfPlurkImages[i];
+                await githubManager.publishPlurkImage(fileName, plurkImages[fileName]);
+            }
+            console.log('all done');
+        }();
     });
 }
 
