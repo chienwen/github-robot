@@ -3,6 +3,7 @@ const enrichRes = require('./lib/enrichRes');
 const githubDiary = require('./lib/githubDiary');
 const dashdash = require('dashdash');
 const _ = require('lodash');
+const logger = require('./lib/logger');
 
 const argOptions = dashdash.parse({options: [
     {
@@ -22,19 +23,23 @@ const FETCH_COUNT_LIMIT = argOptions.fetch_count_limit || Number.MAX_VALUE;
 
 const processPlurkPromises = [];
 let fetchedCount = 0;
-
-const util = {
-    getYearMonth: (dObj) => {
-        return [dObj.getUTCFullYear().toString().substr(2), _.padStart(dObj.getUTCMonth() + 1, 2, '0')];
-    }
-};
+let resTaskCount = 0;
 
 function extractExtendedResource(url, dObj) {
     return new Promise((resolve, reject) => {
         if (token = url.match(/^https:\/\/images\.plurk\.com\/([^\/]+)$/)) {
             resolve({});
         } else {
-            enrichRes(url).then(resolve).catch(reject);
+            logger.info('Will fetch resource', url);
+            resTaskCount += 1;
+            enrichRes(url).then((res) => {
+                resTaskCount -= 1;
+                logger.info('Remaining resource to fetch', resTaskCount);
+                resolve(res);
+            }).catch((err) => {
+                resTaskCount -= 1;
+                reject({err, url});
+            });
         }
     });
 }
@@ -62,7 +67,10 @@ function processPlurk(plurk) {
             extractExtendedResource(data.res.url, dObj).then((edata) => {
                 _.assign(data.res, edata);
                 resolve(data);
-            }).catch(reject);
+            }).catch((err) => {
+                logger.warn('Unable to fetch resource', err.url, err.err);
+                reject(err);
+            });
         }
         else {
             resolve(data);
@@ -71,7 +79,7 @@ function processPlurk(plurk) {
 }
 
 function backupPlurk(dateTimeFrom) {
-    console.error('backup start at', dateTimeFrom);
+    logger.info('backup start at', dateTimeFrom);
     plurk.callAPI('/APP/Timeline/getPlurks',
         {
             limit: FETCH_BATCH_SIZE,
@@ -80,7 +88,7 @@ function backupPlurk(dateTimeFrom) {
         },
         function(data) {
             const plurks = data.plurks;
-            console.error('new fetched', plurks.length, ', already fetched', fetchedCount, '/', FETCH_COUNT_LIMIT);
+            logger.info('new fetched', plurks.length, ', already fetched', fetchedCount, '/', FETCH_COUNT_LIMIT);
             if (plurks.length > 0) {
                 fetchedCount += plurks.length;
                 plurks.forEach(processPlurk);
@@ -99,25 +107,9 @@ function backupPlurk(dateTimeFrom) {
 }
 
 function backupPlurkDone(isEndByCountLimit) {
-    console.error('Fetching done', isEndByCountLimit);
-    Promise.all(processPlurkPromises).then((plurks) => {
-        const monthlyData = {};
-        plurks.forEach((plurk) => {
-            const dObj = new Date(plurk.ts * 1000);
-            const fileName = util.getYearMonth(dObj).join('') + '.json';
-            if (!monthlyData[fileName]) {
-                monthlyData[fileName] = {};
-            }
-            monthlyData[fileName][plurk.id] = plurk;
-        });
-        ~async function() {
-            const listOfFileNames = Object.keys(monthlyData);
-            for (let i = 0; i < listOfFileNames.length; i++) {
-                let fileName = listOfFileNames[i];
-                await githubDiary.publishDiary(fileName, monthlyData[fileName]);
-            }
-            console.log('All done');
-        }();
+    logger.info('Fetching done', isEndByCountLimit);
+    Promise.all(processPlurkPromises).then(githubDiary.publishDiaryItems).then(() => {
+        logger.info('All done.');
     });
 }
 

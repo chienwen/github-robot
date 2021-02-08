@@ -1,3 +1,4 @@
+/*
 const { GitHubOperator } = require('./lib/github');
 const GITHUB_OWNER = 'chienwen';
 const GITHUB_REPO = "blahblah";
@@ -10,3 +11,7 @@ github.write('good.js', sha, "hello world 4").then((data) => {
 }).catch((err) => {
     console.log('error', err);
 });
+*/
+
+const logger = require('./lib/logger');
+logger.info('hihi', 5566);
