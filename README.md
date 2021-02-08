@@ -19,4 +19,8 @@ PLURK_OAUTH_ACCESS_TOKEN_SECRET=
 npm run plurk -- --fetch-count-limit=10 --fetch-batch-size=10
 ```
 
+cron settings
 
+```
+0 8 * * * cd ~/github-robot/ && /usr/bin/npm run plurk -- --fetch-count-limit=50
+```
