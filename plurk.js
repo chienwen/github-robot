@@ -116,7 +116,7 @@ function backupPlurkDone(isEndByCountLimit) {
                 let fileName = listOfFileNames[i];
                 await githubDiary.publishDiary(fileName, monthlyData[fileName]);
             }
-            console.log('all done');
+            console.log('All done');
         }();
     });
 }
