@@ -28,6 +28,12 @@ cron settings
 ## Backup facebook group
 
 ```
-npm run facebook -- ~/Downloads/facebook-chienwenchen94/groups/your_posts_and_comments_in_groups.json
+npm run facebook -- ~/Downloads/facebook-chienwenchen94/groups/your_posts_and_comments_in_groups.json 0 100
+```
+
+To backup approximately the 7k items:
+
+```
+npm run facebook -- ~/Downloads/facebook-chienwenchen94/groups/your_posts_and_comments_in_groups.json 0 1000; npm run facebook -- ~/Downloads/facebook-chienwenchen94/groups/your_posts_and_comments_in_groups.json 1000, 2000; npm run facebook -- ~/Downloads/facebook-chienwenchen94/groups/your_posts_and_comments_in_groups.json 2000 3000; npm run facebook -- ~/Downloads/facebook-chienwenchen94/groups/your_posts_and_comments_in_groups.json 3000 4000; npm run facebook -- ~/Downloads/facebook-chienwenchen94/groups/your_posts_and_comments_in_groups.json 4000 5000; npm run facebook -- ~/Downloads/facebook-chienwenchen94/groups/your_posts_and_comments_in_groups.json 5000 6000; npm run facebook -- ~/Downloads/facebook-chienwenchen94/groups/your_posts_and_comments_in_groups.json 6000 7000; npm run facebook -- ~/Downloads/facebook-chienwenchen94/groups/your_posts_and_comments_in_groups.json 7000 8000;
 ```
 
