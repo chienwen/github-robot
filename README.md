@@ -24,3 +24,10 @@ cron settings
 ```
 0 8 * * * cd ~/github-robot/ && /usr/bin/npm run plurk -- --fetch-count-limit=50
 ```
+
+## Backup facebook group
+
+```
+npm run facebook -- ~/Downloads/facebook-chienwenchen94/groups/your_posts_and_comments_in_groups.json
+```
+

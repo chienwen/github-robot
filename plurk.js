@@ -25,7 +25,7 @@ const processPlurkPromises = [];
 let fetchedCount = 0;
 let resTaskCount = 0;
 
-function extractExtendedResource(url, dObj) {
+function extractExtendedResource(url) {
     return new Promise((resolve, reject) => {
         if (token = url.match(/^https:\/\/images\.plurk\.com\/([^\/]+)$/)) {
             resolve({});
@@ -64,12 +64,13 @@ function processPlurk(plurk) {
             data.res = {
                 url: m[2].trim()
             };
-            extractExtendedResource(data.res.url, dObj).then((edata) => {
+            extractExtendedResource(data.res.url).then((edata) => {
                 _.assign(data.res, edata);
                 resolve(data);
             }).catch((err) => {
                 logger.warn('Unable to fetch resource', err.url, err.err);
-                reject(err);
+                resolve(data); // skip broken resource
+                //reject(err);
             });
         }
         else {
