@@ -2,6 +2,7 @@ const fs = require('fs');
 const utf8 = require('utf8');
 const util = require('util');
 const _ = require('lodash');
+const encodeUrl = require('encodeurl');
 const fbBackupFile = process.argv[2];
 const sliceFrom = process.argv[3];
 const sliceTo = process.argv[4];
@@ -22,21 +23,39 @@ fs.readFile(fbBackupFile, function (err, data) {
     const fbData = JSON.parse(data.toString());
     const activities = fbData.group_posts.activity_log_data;
 
-    const pChienwenActivities = activities.filter((a) => {
+    let pChienwenActivities = activities.filter((a) => {
         return !!a.title.match(/P_chienwen/);
     }).map((a) => {
         const diary = {
             id: 'fbpc' + a.timestamp,
             ts: a.timestamp,
-            ct: utf8.decode(_.get(a, 'data.0.post', a.title)),
+            ct: _.get(a, 'data.0.post', null)
         };
+        if (diary.ct) {
+            diary.ct = utf8.decode(diary.ct);
+        }
         const url = _.get(a, 'attachments.0.data.0.external_context.url');
         if (url) {
-            diary.res = {url: utf8.decode(url)};
+            diary.res = {url: encodeUrl(utf8.decode(url))};
         }
         //diary.debug = a;
         return diary;
-    }).slice(sliceFrom, sliceTo)
+    })
+
+    // de-dup id
+    const dict = {};
+    pChienwenActivities.forEach((item) => {
+        if (dict[item.id]) {
+            item.ct = item.ct || dict[item.id].ct;
+        }
+        dict[item.id] = item;
+    });
+    pChienwenActivities = [];
+    Object.keys(dict).forEach((id) => {
+        pChienwenActivities.push(dict[id]);
+    });
+
+    pChienwenActivities = pChienwenActivities.slice(sliceFrom, sliceTo)
 
     if (pChienwenActivities.length == 0) {
         console.info('No data in this range.');
@@ -106,7 +125,7 @@ fs.readFile(fbBackupFile, function (err, data) {
             });
             batchStart += BATCH_SIZE;
         }
-        logger.info('Resource are all ready.');
+        logger.info('Resource are all ready. Total', pChienwenActivities.length);
         githubDiary.publishDiaryItems(pChienwenActivities).then(() => {
             logger.info('All done.');
         });
