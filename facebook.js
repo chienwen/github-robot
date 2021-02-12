@@ -10,6 +10,7 @@ const githubDiary = require('./lib/githubDiary');
 const enrichRes = require('./lib/enrichRes');
 const logger = require('./lib/logger');
 const BATCH_SIZE = 20;
+const TITLE_MATCH_REGEXP = new RegExp(process.env.npm_config_FACEBOOK_TITLE_MATCH_PATTERN);
 
 if (process.argv.length !== 5) {
     logger.info('Usage:', process.argv[0], process.argv[1], 'fb_backup_file_your_posts_and_comments_in_groups.json', 'slice_from_inclusive', 'slice_to_exclusive');
@@ -21,10 +22,9 @@ fs.readFile(fbBackupFile, function (err, data) {
         throw err; 
     }
     const fbData = JSON.parse(data.toString());
-    const activities = fbData.group_posts.activity_log_data;
 
-    let pChienwenActivities = activities.filter((a) => {
-        return !!a.title.match(/P_chienwen/);
+    let activities = fbData.group_posts.activity_log_data.filter((a) => {
+        return !!a.title.match(TITLE_MATCH_REGEXP);
     }).map((a) => {
         const diary = {
             id: 'fbpc' + a.timestamp,
@@ -44,25 +44,24 @@ fs.readFile(fbBackupFile, function (err, data) {
 
     // de-dup id
     const dict = {};
-    pChienwenActivities.forEach((item) => {
+    activities.forEach((item) => {
         if (dict[item.id]) {
             item.ct = item.ct || dict[item.id].ct;
         }
         dict[item.id] = item;
     });
-    pChienwenActivities = [];
+    activities = [];
     Object.keys(dict).forEach((id) => {
-        pChienwenActivities.push(dict[id]);
+        activities.push(dict[id]);
     });
 
-    pChienwenActivities = pChienwenActivities.slice(sliceFrom, sliceTo)
+    // slice batch
+    activities = activities.slice(sliceFrom, sliceTo)
 
-    if (pChienwenActivities.length == 0) {
-        console.info('No data in this range.');
+    if (activities.length == 0) {
+        logger.info('No data in this range.');
         return;
     }
-    //console.log(util.inspect(pChienwenActivities, {showHidden: false, depth: null}));
-    //return;
     
     function process(items, reportCb) {
         let resTaskCount = 0;
@@ -113,20 +112,20 @@ fs.readFile(fbBackupFile, function (err, data) {
     ~async function() {
         let batchStart = 0;
         while(true) {
-            const items = pChienwenActivities.slice(batchStart, batchStart + BATCH_SIZE);
+            const items = activities.slice(batchStart, batchStart + BATCH_SIZE);
             if (items.length == 0) {
                 break;
             }
             await process(items, () => {
                 logger.info('========================================================================');
                 logger.info('BATCH [', sliceFrom , sliceTo ,']');
-                logger.info('Processing', batchStart, batchStart + BATCH_SIZE, 'total', pChienwenActivities.length, 'finish', batchStart * 100 / pChienwenActivities.length, '%');
+                logger.info('Processing', batchStart, batchStart + BATCH_SIZE, 'total', activities.length, 'finish', batchStart * 100 / activities.length, '%');
                 logger.info('========================================================================');
             });
             batchStart += BATCH_SIZE;
         }
-        logger.info('Resource are all ready. Total', pChienwenActivities.length);
-        githubDiary.publishDiaryItems(pChienwenActivities).then(() => {
+        logger.info('Resource are all ready. Total', activities.length);
+        githubDiary.publishDiaryItems(activities).then(() => {
             logger.info('All done.');
         });
     }();
