@@ -7,6 +7,7 @@
     "example": "node example.js",
     "debug": "node debug.js",
     "plurk": "node plurk.js",
+    "facebook": "node facebook.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "chienwen",
@@ -15,8 +16,10 @@
     "@octokit/rest": "^18.0.15",
     "base-64": "^1.0.0",
     "dashdash": "^2.0.0",
+    "encodeurl": "^1.0.2",
     "lodash": "^4.17.20",
     "oauth": "^0.9.15",
-    "url-metadata": "git://github.com:chienwen/url-metadata.git"
+    "url-metadata": "git://github.com:chienwen/url-metadata.git",
+    "utf8": "^3.0.0"
   }
 }
