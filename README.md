@@ -30,6 +30,6 @@ cron settings
 ## Backup facebook group
 
 ```
-npm run facebook -- my_facebook_dump/groups/your_posts_and_comments_in_groups.json 0 8000
+npm run facebook -- my_facebook_dump/groups/your_posts_and_comments_in_groups.json 0 8000 >> log.txt 2>&1
 ```
 
