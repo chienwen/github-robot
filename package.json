@@ -5,7 +5,7 @@
   "main": "run.js",
   "scripts": {
     "example": "node example.js",
-    "debug": "node debug.js",
+    "debug": "node debug_scripts/debug3.js",
     "plurk": "node plurk.js",
     "facebook": "node facebook.js",
     "test": "echo \"Error: no test specified\" && exit 1"
