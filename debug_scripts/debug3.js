@@ -44,6 +44,9 @@ function extractExtendedResource(url) {
 }
 
 function processPlurk(plurk) {
+    //if (plurk.plurk_id != 1464937795) {
+    //    return false;
+    //}
     processPlurkPromises.push(new Promise((resolve, reject) => {
         const dObj =  new Date(plurk.posted);
         const data = {
@@ -84,7 +87,7 @@ function backupPlurk(dateTimeFrom) {
     plurk.callAPI('/APP/Timeline/getPlurks',
         {
             limit: FETCH_BATCH_SIZE,
-            filter: undefined, //'my,replurked',
+            filter: 'my',//undefined, //'my,replurked',
             offset: dateTimeFrom.toISOString()
         },
         function(data) {
