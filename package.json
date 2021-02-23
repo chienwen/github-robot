@@ -8,6 +8,7 @@
     "debug": "node debug_scripts/debug3.js",
     "plurk": "node plurk.js",
     "facebook": "node facebook.js",
+    "ptt": "node ptt.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "chienwen",
@@ -18,6 +19,8 @@
     "dashdash": "^2.0.0",
     "encodeurl": "^1.0.2",
     "lodash": "^4.17.20",
+    "node-fetch": "^2.6.1",
+    "node-html-parser": "^3.0.1",
     "oauth": "^0.9.15",
     "url-metadata": "git://github.com:chienwen/url-metadata.git",
     "utf8": "^3.0.0"

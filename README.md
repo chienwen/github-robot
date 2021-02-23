@@ -14,6 +14,9 @@ PLURK_OAUTH_ACCESS_TOKEN_SECRET=
 PLURK_MY_USER_ID=
 
 FACEBOOK_TITLE_MATCH_PATTERN=
+
+PTT_USERS_COMMA_SEP=
+PTT_BOARDS_COMMA_SEP=ALLPOST
 ```
 
 ## Backup plurks
@@ -34,3 +37,8 @@ cron settings
 npm run facebook -- my_facebook_dump/groups/your_posts_and_comments_in_groups.json 0 8000 >> log.txt 2>&1
 ```
 
+## Backup ptt
+
+```
+npm run ptt
+```
