@@ -1,4 +1,4 @@
-const plurk = require('./lib/plurk');
+const plurkLib = require('./lib/plurk');
 const enrichRes = require('./lib/enrichRes');
 const githubDiary = require('./lib/githubDiary');
 const dashdash = require('dashdash');
@@ -57,6 +57,9 @@ function processPlurk(plurk) {
                 resc: plurk.response_count
             }
         };
+        if (plurk.limited_to && plurkLib.isLimitedToMeOnly(plurk.limited_to)) {
+            data.plat.priv = true;
+        }
         const m = data.ct.replace(/\n/g, ' ').trim().match(/^(.*)(https?:\/\/[^ ]+)$/);
         if (m) {
             data.ct = m[1].trim();
@@ -81,7 +84,7 @@ function processPlurk(plurk) {
 
 function backupPlurk(dateTimeFrom) {
     logger.info('backup start at', dateTimeFrom);
-    plurk.callAPI('/APP/Timeline/getPlurks',
+    plurkLib.callAPI('/APP/Timeline/getPlurks',
         {
             limit: FETCH_BATCH_SIZE,
             filter: 'my',

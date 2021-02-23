@@ -50,6 +50,7 @@ function processPlurk(plurk) {
             id: 'pl' + plurk.plurk_id,
             ts: Math.floor(dObj.getTime() / 1000),
             ct: plurk.content_raw,
+            debug: plurk,
             plat: {
                 type: plurk.qualifier,
                 ams: plurk.anonymous,
