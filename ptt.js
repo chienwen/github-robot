@@ -1,5 +1,6 @@
 const fetch = require('node-fetch');
 const HTMLParser = require('node-html-parser');
+const _ = require('lodash');
 const logger = require('./lib/logger');
 const META_USER_AGENT_STRING = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36';
 const PTT_REQUEST_HEADER = {
@@ -12,6 +13,8 @@ const PTT_USERS = process.env.npm_config_PTT_USERS_COMMA_SEP.split(',');
 const PTT_BOARDS = process.env.npm_config_PTT_BOARDS_COMMA_SEP.split(',');
 const { GitHubOperator } = require('./lib/github');
 const github = new GitHubOperator();
+const PTT_GITHUB_PATH_BASE = 'ptt/';
+const PTT_GITHUB_INDEX_JSON_FILE = PTT_GITHUB_PATH_BASE + 'index.json';
 
 function fetchPTTArticleList(board, user) {
     return new Promise((resolve, reject) => {
@@ -75,10 +78,16 @@ Promise.all(fetchUrlPromises).then((urlLists) => {
     function processArticle(url) {
         return new Promise((resolve, reject) => {
             logger.info('Process', url);
-            fetch('https://www.ptt.cc' + url, { headers: PTT_REQUEST_HEADER })
+            const fullUrl = 'https://www.ptt.cc' + url;
+            fetch(fullUrl, { headers: PTT_REQUEST_HEADER })
             .then(res => res.text())
             .then((body) => {
                 const lines = body.split("\n");
+                if (lines.length < 30) {
+                    logger.warn('Fetched invalid content', fullUrl, body);
+                    resolve();
+                    return;
+                }
                 const meta = {};
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i];
@@ -90,26 +99,24 @@ Promise.all(fetchUrlPromises).then((urlLists) => {
                 }
                 const root = HTMLParser.parse(body);
                 meta.title = root.querySelector('meta[property="og:title"]').attributes.content;
-                const regs = url.match(/\/bbs\/([^\/]+)\/(\w\.(\d+).+)/);
+                const regs = url.match(/\/bbs\/([^\/]+)\/((\w\.(\d+).+)\.html)/);
                 meta.board = regs[1];
                 meta.fname = regs[2];
-                meta.ts = regs[3] / 1;
-                if (!allIndexes[meta.board]) {
-                    allIndexes[meta.board] = {};
-                }
-                if (!allIndexes[meta.board][meta.author]) {
-                    allIndexes[meta.board][meta.author] = [];
-                }
-                allIndexes[meta.board][meta.author].push(meta);
+                meta.ts = regs[4] / 1;
+                allIndexes[regs[3]] = meta;
 
                 // push to github
-                const filePath = `ptt/${meta.board}/${meta.fname}`;
+                const filePath = `${PTT_GITHUB_PATH_BASE}${meta.board}/${meta.fname}`;
+
                 github.writeAnyway(filePath, body).then((data) => {
                     logger.info("Pushed", meta);
                     setTimeout(() => {
                         resolve();
                     }, PTT_QUERY_PAUSE_MS);
                 });
+            }).catch((err) => {
+                logger.warn('Unable to fetch', fullUrl, err);
+                resolve();
             });
         });
     }
@@ -118,8 +125,15 @@ Promise.all(fetchUrlPromises).then((urlLists) => {
             logger.info('WIP', i, '/', allUrlList.length);
             await processArticle(allUrlList[i]);
         }
-        github.writeAnyway('ptt/index.json', JSON.stringify(allIndexes, null, 4)).then(() => {
-            logger.info('OK done');
+        github.read(PTT_GITHUB_INDEX_JSON_FILE).then((data) => {
+            let existingIndex = {};
+            if (data) {
+                existingIndex = JSON.parse(data.content);
+            }
+            _.assign(existingIndex, allIndexes);
+            github.write(PTT_GITHUB_INDEX_JSON_FILE, data ? data.sha : undefined, JSON.stringify(existingIndex, null, 4)).then((res) => {
+                logger.info('OK done', res);
+            });
         });
     }
     logger.info('Fetched', allUrlList.length);
