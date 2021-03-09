@@ -1,6 +1,6 @@
 ## Configuration
 
-Put a file `.npmrc` like:
+Put a file `config.ini` like:
 
 ```ini
 GITHUB_OWNER=chienwen

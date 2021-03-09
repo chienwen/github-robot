@@ -9,8 +9,9 @@ const PTT_REQUEST_HEADER = {
 };
 const PTT_QUERY_PAUSE_MS = 1000;
 
-const PTT_USERS = process.env.npm_config_PTT_USERS_COMMA_SEP.split(',');
-const PTT_BOARDS = process.env.npm_config_PTT_BOARDS_COMMA_SEP.split(',');
+const config = require('./lib/config');
+const PTT_USERS = config('PTT_USERS_COMMA_SEP').split(',');
+const PTT_BOARDS = config('PTT_BOARDS_COMMA_SEP').split(',');
 const { GitHubOperator } = require('./lib/github');
 const github = new GitHubOperator();
 const PTT_GITHUB_PATH_BASE = 'ptt/';

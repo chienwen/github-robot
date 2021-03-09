@@ -10,7 +10,8 @@ const githubDiary = require('./lib/githubDiary');
 const enrichRes = require('./lib/enrichRes');
 const logger = require('./lib/logger');
 const BATCH_SIZE = 20;
-const TITLE_MATCH_REGEXP = new RegExp(process.env.npm_config_FACEBOOK_TITLE_MATCH_PATTERN);
+const config = require('./lib/config');
+const TITLE_MATCH_REGEXP = new RegExp(config('FACEBOOK_TITLE_MATCH_PATTERN'));
 
 if (process.argv.length !== 5) {
     logger.info('Usage:', process.argv[0], process.argv[1], 'fb_backup_file_your_posts_and_comments_in_groups.json', 'slice_from_inclusive', 'slice_to_exclusive');
