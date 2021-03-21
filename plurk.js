@@ -71,7 +71,7 @@ function processPlurk(plurk) {
                 _.assign(data.res, edata);
                 resolve(data);
             }).catch((err) => {
-                logger.warn('Unable to fetch resource', err.url, err.err);
+                logger.warn('Unable to fetch resource', err.url, err.err, 'when backup', plurkLib.getPlurkUrlFromId(plurk.plurk_id));
                 resolve(data); // skip broken resource
                 //reject(err);
             });
