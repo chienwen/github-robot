@@ -57,6 +57,9 @@ function processPlurk(plurk) {
                 resc: plurk.response_count
             }
         };
+        if (plurk.poll) {
+            data.plat.poll = plurk.poll;
+        }
         if (plurk.limited_to && plurkLib.isLimitedToMeOnly(plurk.limited_to)) {
             data.plat.priv = true;
         }
