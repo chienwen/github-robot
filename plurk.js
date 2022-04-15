@@ -50,7 +50,7 @@ function processPlurk(plurk, myPlurkId) {
         const dObj =  new Date(plurk.posted);
         const data = {
             id: 'pl' + plurk.plurk_id,
-            by: myPlurkId,
+            by: myPlurkId / 1,
             ts: Math.floor(dObj.getTime() / 1000),
             ct: plurk.content_raw,
             plat: {
@@ -87,13 +87,9 @@ function processPlurk(plurk, myPlurkId) {
     }));
 }
 
-function backupPlurk(dateTimeFrom) {
-    logger.info('backup start at', dateTimeFrom);
-    plurkLib.callAPI('/APP/Timeline/getPlurks',
-        {
-            token: config('PLURK_SMULLERS_OAUTH_ACCESS_TOKEN'),
-            secret: config('PLURK_SMULLERS_OAUTH_ACCESS_TOKEN_SECRET'),
-        },
+function backupPlurk(dateTimeFrom, user, resolve) {
+    logger.info('backup start at', dateTimeFrom, user);
+    plurkLib.callAPI('/APP/Timeline/getPlurks', user,
         {
             limit: FETCH_BATCH_SIZE,
             filter: 'my',
@@ -104,33 +100,56 @@ function backupPlurk(dateTimeFrom) {
             logger.info('new fetched', plurks.length, ', already fetched', fetchedCount, '/', FETCH_COUNT_LIMIT);
             if (plurks.length > 0) {
                 fetchedCount += plurks.length;
-                plurks.forEach((plurk) => {
-                    processPlurk(plurk, config('PLURK_SMULLERS_USER_ID'));
+                plurks.filter((plurk) => {
+                    if (user.isValidOnly) {
+                        return user.isValidOnly(plurk);
+                    } else {
+                        return true;
+                    }
+                }).forEach((plurk) => {
+                    processPlurk(plurk, user.id);
                 });
                 if (fetchedCount < FETCH_COUNT_LIMIT) {
                     const nextDateTime = new Date(plurks[plurks.length - 1].posted);
-                    backupPlurk(nextDateTime);
+                    backupPlurk(nextDateTime, user, resolve);
                 }
                 else {
-                    backupPlurkDone(true);
+                    resolve();
                 }
             } else {
-                backupPlurkDone(false);
+                resolve();
             }
         }
     );
 }
 
-function backupPlurkDone(isEndByCountLimit) {
-    logger.info('Fetching done', isEndByCountLimit);
-    
+const collectByAccountPromises = [];
+
+collectByAccountPromises.push(new Promise((resolve) => {
+    backupPlurk(new Date(), {
+            id: config('PLURK_SMULLERS_USER_ID'),
+            token: config('PLURK_SMULLERS_OAUTH_ACCESS_TOKEN'),
+            secret: config('PLURK_SMULLERS_OAUTH_ACCESS_TOKEN_SECRET'),
+        }, resolve);
+}));
+
+collectByAccountPromises.push(new Promise((resolve) => {        
+    backupPlurk(new Date(), {
+            id: config('PLURK_SCHIPHOL_USER_ID'),
+            token: config('PLURK_SCHIPHOL_OAUTH_ACCESS_TOKEN'),
+            secret: config('PLURK_SCHIPHOL_OAUTH_ACCESS_TOKEN_SECRET'),
+            isValidOnly: function (plurk) {
+                return plurk.anonymous;
+            },
+        }, resolve);
+}));
+
+Promise.all(collectByAccountPromises).then(() => {
+        
     // Debugging, don't push
     //Promise.all(processPlurkPromises).then((items) => { console.log(require('util').inspect(items, {showHidden: false, depth: null}))}); return;
 
     Promise.all(processPlurkPromises).then(githubDiary.publishDiaryItems).then(() => {
         logger.info('All done.');
     });
-}
-
-backupPlurk(new Date());
-
+});
