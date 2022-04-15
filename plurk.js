@@ -50,6 +50,7 @@ function processPlurk(plurk, myPlurkId) {
         const dObj =  new Date(plurk.posted);
         const data = {
             id: 'pl' + plurk.plurk_id,
+            by: myPlurkId,
             ts: Math.floor(dObj.getTime() / 1000),
             ct: plurk.content_raw,
             plat: {
