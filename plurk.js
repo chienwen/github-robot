@@ -45,6 +45,22 @@ function extractExtendedResource(url) {
     });
 }
 
+function getRandomInfo(content) {
+    const texts = content.match(/class="emoticon" alt="\([a-z]+\)" rndnum="\d+"/g);
+    if (texts) {
+        const results = [];
+        texts.forEach((text) => {
+            const matches = text.match(/class="emoticon" alt="\(([a-z]+)\)" rndnum="(\d+)"/);
+            if (matches) {
+                results.push({alt: matches[1], num: matches[2] / 1});
+            }
+        });
+        return results;
+    } else {
+        return false;
+    }
+}
+
 function processPlurk(plurk, myPlurkId) {
     processPlurkPromises.push(new Promise((resolve, reject) => {
         const dObj =  new Date(plurk.posted);
@@ -59,6 +75,10 @@ function processPlurk(plurk, myPlurkId) {
                 resc: plurk.response_count
             }
         };
+        const randomInfo = getRandomInfo(plurk.content);
+        if (randomInfo) {
+            data.rand = randomInfo;
+        }
         if (plurk.poll) {
             data.plat.poll = plurk.poll;
         }
