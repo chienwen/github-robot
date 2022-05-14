@@ -145,6 +145,7 @@ function backupPlurk(dateTimeFrom, user, resolve) {
 
 const collectByAccountPromises = [];
 
+// main account
 collectByAccountPromises.push(new Promise((resolve) => {
     backupPlurk(new Date(), {
             id: config('PLURK_SMULLERS_USER_ID'),
@@ -153,16 +154,19 @@ collectByAccountPromises.push(new Promise((resolve) => {
         }, resolve);
 }));
 
-collectByAccountPromises.push(new Promise((resolve) => {        
-    backupPlurk(new Date(), {
-            id: config('PLURK_SCHIPHOL_USER_ID'),
-            token: config('PLURK_SCHIPHOL_OAUTH_ACCESS_TOKEN'),
-            secret: config('PLURK_SCHIPHOL_OAUTH_ACCESS_TOKEN_SECRET'),
-            isValidOnly: function (plurk) {
-                return plurk.anonymous;
-            },
-        }, resolve);
-}));
+// accounts only track anonymous plurks
+['SCHIPHOL', 'HOTELDELLUNA'].forEach((account) => {
+    collectByAccountPromises.push(new Promise((resolve) => {
+        backupPlurk(new Date(), {
+                id: config('PLURK_' + account + '_USER_ID'),
+                token: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN'),
+                secret: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN_SECRET'),
+                isValidOnly: function (plurk) {
+                    return plurk.anonymous;
+                },
+            }, resolve);
+    }));
+});
 
 Promise.all(collectByAccountPromises).then(() => {
         
