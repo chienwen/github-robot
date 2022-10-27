@@ -72,7 +72,8 @@ function processPlurk(plurk, myPlurkId) {
             plat: {
                 type: plurk.qualifier,
                 ams: plurk.anonymous,
-                resc: plurk.response_count
+                resc: plurk.response_count,
+                rp: plurk.replurked ? true : undefined,
             }
         };
         const randomInfo = getRandomInfo(plurk.content);
@@ -112,7 +113,7 @@ function backupPlurk(dateTimeFrom, user, resolve) {
     plurkLib.callAPI('/APP/Timeline/getPlurks', user,
         {
             limit: FETCH_BATCH_SIZE,
-            filter: 'my',
+            //filter: 'my', // remove this to include re-plurks
             offset: dateTimeFrom.toISOString()
         },
         function(data) {
@@ -121,10 +122,14 @@ function backupPlurk(dateTimeFrom, user, resolve) {
             if (plurks.length > 0) {
                 fetchedCount += plurks.length;
                 plurks.filter((plurk) => {
-                    if (user.isValidOnly) {
-                        return user.isValidOnly(plurk);
+                    if (plurk.user_id === user.id || plurk.replurked) {
+                        if (user.isValidOnly) {
+                            return user.isValidOnly(plurk);
+                        } else {
+                            return true;
+                        }
                     } else {
-                        return true;
+                        return false;
                     }
                 }).forEach((plurk) => {
                     processPlurk(plurk, user.id);
