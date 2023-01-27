@@ -108,12 +108,12 @@ function processPlurk(plurk, myPlurkId) {
     }));
 }
 
-function backupPlurk(dateTimeFrom, user, resolve) {
+function backupPlurk(dateTimeFrom, user, resolve, target) {
     logger.info('backup start at', dateTimeFrom, user);
     plurkLib.callAPI('/APP/Timeline/getPlurks', user,
         {
             limit: FETCH_BATCH_SIZE,
-            //filter: 'my', // remove this to include re-plurks
+            filter: target,
             offset: dateTimeFrom.toISOString()
         },
         function(data) {
@@ -122,7 +122,7 @@ function backupPlurk(dateTimeFrom, user, resolve) {
             if (plurks.length > 0) {
                 fetchedCount += plurks.length;
                 plurks.filter((plurk) => {
-                    if (plurk.user_id === user.id || plurk.replurked) {
+                    if (plurk.user_id == user.id || plurk.replurked) {
                         if (user.isValidOnly) {
                             return user.isValidOnly(plurk);
                         } else {
@@ -152,24 +152,28 @@ const collectByAccountPromises = [];
 
 // main account
 collectByAccountPromises.push(new Promise((resolve) => {
-    backupPlurk(new Date(), {
+    ['my', 'replurked'].forEach(target => {
+        backupPlurk(new Date(), {
             id: config('PLURK_SMULLERS_USER_ID'),
             token: config('PLURK_SMULLERS_OAUTH_ACCESS_TOKEN'),
             secret: config('PLURK_SMULLERS_OAUTH_ACCESS_TOKEN_SECRET'),
-        }, resolve);
+        }, resolve, target);
+    });
 }));
 
 // accounts only track anonymous plurks
 ['SCHIPHOL', 'HOTELDELLUNA'].forEach((account) => {
     collectByAccountPromises.push(new Promise((resolve) => {
-        backupPlurk(new Date(), {
+        ['my', 'replurked'].forEach(target => {
+            backupPlurk(new Date(), {
                 id: config('PLURK_' + account + '_USER_ID'),
                 token: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN'),
                 secret: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN_SECRET'),
                 isValidOnly: function (plurk) {
                     return plurk.anonymous;
                 },
-            }, resolve);
+            }, resolve, target);
+        });
     }));
 });
 
