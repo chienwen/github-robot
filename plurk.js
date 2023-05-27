@@ -122,7 +122,8 @@ function backupPlurk(dateTimeFrom, user, resolve, target) {
             if (plurks.length > 0) {
                 fetchedCount += plurks.length;
                 plurks.filter((plurk) => {
-                    if (plurk.user_id == user.id || plurk.replurked) {
+                    // use owner_id not user_id or plurk may return other people's plurks
+                    if (plurk.owner_id == user.id || plurk.replurked) {
                         if (user.isValidOnly) {
                             return user.isValidOnly(plurk);
                         } else {
@@ -150,16 +151,18 @@ function backupPlurk(dateTimeFrom, user, resolve, target) {
 
 const collectByAccountPromises = [];
 
-// main account
-collectByAccountPromises.push(new Promise((resolve) => {
-    ['my', 'replurked'].forEach(target => {
-        backupPlurk(new Date(), {
-            id: config('PLURK_SMULLERS_USER_ID'),
-            token: config('PLURK_SMULLERS_OAUTH_ACCESS_TOKEN'),
-            secret: config('PLURK_SMULLERS_OAUTH_ACCESS_TOKEN_SECRET'),
-        }, resolve, target);
-    });
-}));
+// accounts full backup 
+['SMULLERS', 'BLOODRAYNE'].forEach((account) => {
+    collectByAccountPromises.push(new Promise((resolve) => {
+        ['my', 'replurked'].forEach(target => {
+            backupPlurk(new Date(), {
+                id: config('PLURK_' + account + '_USER_ID'),
+                token: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN'),
+                secret: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN_SECRET'),
+            }, resolve, target);
+        });
+    }));
+});
 
 // accounts only track anonymous plurks
 ['SCHIPHOL', 'HOTELDELLUNA'].forEach((account) => {
@@ -186,3 +189,4 @@ Promise.all(collectByAccountPromises).then(() => {
         logger.info('All done.');
     });
 });
+
