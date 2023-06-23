@@ -13,6 +13,11 @@ const argOptions = dashdash.parse({options: [
         help: 'Max number of plurks to fetch. Omit this option to make it unlimited.'
     },
     {
+        name: 'fetch-date-limit',
+        type: 'string',
+        help: 'Fetch plurks until YYYY-MM-DD. Omit this option to make it unlimited.'
+    },
+    {
         name: 'fetch-batch-size',
         type: 'positiveInteger',
         help: 'Max number of plurks to fetch per batch. Max seems 30.'
@@ -20,7 +25,8 @@ const argOptions = dashdash.parse({options: [
 ]});
 
 const FETCH_BATCH_SIZE = argOptions.fetch_batch_size || 20;
-const FETCH_COUNT_LIMIT = argOptions.fetch_count_limit || Number.MAX_VALUE;
+const FETCH_COUNT_LIMIT = argOptions.fetch_count_limit || 99999999;
+const FETCH_DATE_LIMIT = (new Date(argOptions.fetch_date_limit)) || null;
 
 const processPlurkPromises = [];
 let fetchedCount = 0;
@@ -38,8 +44,10 @@ function extractExtendedResource(url) {
                 logger.info('Remaining resource to fetch', resTaskCount);
                 resolve(res);
             }).catch((err) => {
+                logger.info('extractExtendedResource to reject');
                 resTaskCount -= 1;
-                reject({err, url});
+                //reject({err, url});
+                resolve({});
             });
         }
     });
@@ -99,7 +107,7 @@ function processPlurk(plurk, myPlurkId) {
             }).catch((err) => {
                 logger.warn('Unable to fetch resource', err.url, err.err, 'when backup', plurkLib.getPlurkUrlFromId(plurk.plurk_id));
                 resolve(data); // skip broken resource
-                //reject(err);
+                reject(err);
             });
         }
         else {
@@ -110,20 +118,34 @@ function processPlurk(plurk, myPlurkId) {
 
 function backupPlurk(dateTimeFrom, user, resolve, target) {
     logger.info('backup start at', dateTimeFrom, user);
+    const request = {
+        limit: FETCH_BATCH_SIZE,
+        filter: target,
+        offset: dateTimeFrom.toISOString(),
+    };
     plurkLib.callAPI('/APP/Timeline/getPlurks', user,
-        {
-            limit: FETCH_BATCH_SIZE,
-            filter: target,
-            offset: dateTimeFrom.toISOString()
-        },
+        request,
         function(data) {
+            if (data.error) {
+                logger.warn('Plurk API Error', request, data.error);
+                process.exit(1);
+                return;
+            }
             const plurks = data.plurks;
-            logger.info('new fetched', plurks.length, ', already fetched', fetchedCount, '/', FETCH_COUNT_LIMIT);
             if (plurks.length > 0) {
+                const nextDateTime = new Date(plurks[plurks.length - 1].posted);
+                if (FETCH_DATE_LIMIT) {
+                    logger.info('new fetched', plurks.length, ', already fetched', nextDateTime, '/', FETCH_DATE_LIMIT, request);
+                } else {
+                    logger.info('new fetched', plurks.length, ', already fetched', fetchedCount, '/', FETCH_COUNT_LIMIT, request);
+                }
                 fetchedCount += plurks.length;
                 plurks.filter((plurk) => {
                     // use owner_id not user_id or plurk may return other people's plurks
-                    if (plurk.owner_id == user.id || plurk.replurked) {
+                    if (plurk.owner_id == user.id 
+                            || plurk.replurked 
+                            || (plurk.anonymous && plurk.user_id == user.id)
+                            ) {
                         if (user.isValidOnly) {
                             return user.isValidOnly(plurk);
                         } else {
@@ -135,12 +157,20 @@ function backupPlurk(dateTimeFrom, user, resolve, target) {
                 }).forEach((plurk) => {
                     processPlurk(plurk, user.id);
                 });
-                if (fetchedCount < FETCH_COUNT_LIMIT) {
-                    const nextDateTime = new Date(plurks[plurks.length - 1].posted);
-                    backupPlurk(nextDateTime, user, resolve);
-                }
-                else {
-                    resolve();
+                if (FETCH_DATE_LIMIT) {
+                    if (FETCH_DATE_LIMIT.getTime() < nextDateTime.getTime()) {
+                        backupPlurk(nextDateTime, user, resolve, target);
+                    }
+                    else {
+                        resolve();
+                    }
+                } else {
+                    if (fetchedCount < FETCH_COUNT_LIMIT) {
+                        backupPlurk(nextDateTime, user, resolve, target);
+                    }
+                    else {
+                        resolve();
+                    }
                 }
             } else {
                 resolve();
@@ -152,22 +182,24 @@ function backupPlurk(dateTimeFrom, user, resolve, target) {
 const collectByAccountPromises = [];
 
 // accounts full backup 
+//['SMULLERS'].forEach((account) => {
 ['SMULLERS', 'BLOODRAYNE'].forEach((account) => {
-    collectByAccountPromises.push(new Promise((resolve) => {
-        ['my', 'replurked'].forEach(target => {
+    ['my', 'replurked'].forEach(target => {
+    //['my'].forEach(target => {
+        collectByAccountPromises.push(new Promise((resolve) => {
             backupPlurk(new Date(), {
                 id: config('PLURK_' + account + '_USER_ID'),
                 token: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN'),
                 secret: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN_SECRET'),
             }, resolve, target);
-        });
-    }));
+        }));
+    });
 });
 
 // accounts only track anonymous plurks
 ['SCHIPHOL', 'HOTELDELLUNA'].forEach((account) => {
-    collectByAccountPromises.push(new Promise((resolve) => {
-        ['my', 'replurked'].forEach(target => {
+    ['my', 'replurked'].forEach(target => {
+        collectByAccountPromises.push(new Promise((resolve) => {
             backupPlurk(new Date(), {
                 id: config('PLURK_' + account + '_USER_ID'),
                 token: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN'),
@@ -176,14 +208,17 @@ const collectByAccountPromises = [];
                     return plurk.anonymous;
                 },
             }, resolve, target);
-        });
-    }));
+        }));
+    });
 });
 
 Promise.all(collectByAccountPromises).then(() => {
         
     // Debugging, don't push
-    //Promise.all(processPlurkPromises).then((items) => { console.log(require('util').inspect(items, {showHidden: false, depth: null}))}); return;
+    //Promise.all(processPlurkPromises).then((items) => {
+    //    console.log('final output', require('util').inspect(items, {showHidden: false, depth: null, maxArrayLength: null}))
+    //}); 
+    //return;
 
     Promise.all(processPlurkPromises).then(githubDiary.publishDiaryItems).then(() => {
         logger.info('All done.');
