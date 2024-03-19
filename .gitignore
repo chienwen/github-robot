@@ -1,4 +1,5 @@
 .npmrc
 config.ini
 *.swp
+*~
 node_modules

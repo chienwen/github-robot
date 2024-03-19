@@ -26,7 +26,7 @@ const argOptions = dashdash.parse({options: [
 
 const FETCH_BATCH_SIZE = argOptions.fetch_batch_size || 20;
 const FETCH_COUNT_LIMIT = argOptions.fetch_count_limit || 99999999;
-const FETCH_DATE_LIMIT = (new Date(argOptions.fetch_date_limit)) || null;
+const FETCH_DATE_LIMIT = argOptions.fetch_date_limit ? new Date(argOptions.fetch_date_limit) : null;
 
 const processPlurkPromises = [];
 let fetchedCount = 0;

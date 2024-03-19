@@ -32,6 +32,7 @@ PTT_BOARDS_COMMA_SEP=ALLPOST
 
 ```
 npm run plurk -- --fetch-count-limit=10 --fetch-batch-size=10
+npm run plurk -- --fetch-date-limit=2023-12-01
 ```
 
 cron settings
