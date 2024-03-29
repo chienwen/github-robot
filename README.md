@@ -26,6 +26,9 @@ FACEBOOK_TITLE_MATCH_PATTERN=
 
 PTT_USERS_COMMA_SEP=
 PTT_BOARDS_COMMA_SEP=ALLPOST
+
+HACKMD_GITHUB_REPO=
+HACKMD_TOKEN=
 ```
 
 ## Backup plurks
@@ -52,3 +55,10 @@ npm run facebook -- my_facebook_dump/groups/your_posts_and_comments_in_groups.js
 ```
 npm run ptt
 ```
+
+## Backup hackmd
+
+```
+npm run hackmd
+```
+
