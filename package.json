@@ -8,6 +8,7 @@
     "debug": "node debug_scripts/debug3.js",
     "plurk": "node plurk.js",
     "hackmd": "node hackmd.js",
+    "clickup": "node clickup.js",
     "facebook": "node facebook.js",
     "ptt": "node ptt.js",
     "test": "echo \"Error: no test specified\" && exit 1"
