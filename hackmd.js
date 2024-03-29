@@ -12,6 +12,20 @@ axios.defaults.headers.common['Authorization'] = 'Bearer ' + AUTH_TOKEN;
 const { GitHubOperator } = require('./lib/github');
 const github = new GitHubOperator(null, HACKMD_NOTE_REPO);
 
+async function publishGithub(mdResList) {
+	for (let i = 0; i < mdResList.length; i++) {
+		const {file, data} = mdResList[i];
+		const repoFilePath = file.title;
+		const eData = await github.read(repoFilePath);
+		if (eData && eData.content === data.content) {
+			console.log(304, 'NO_CHANGE', repoFilePath);
+		} else {
+			const gRes = await github.write(repoFilePath, eData ? eData.sha : undefined, data.content);
+			console.log(gRes.status, gRes.data.commit.html_url);
+		}
+	}
+}
+
 axios.get(API_BASE + API_NOTE_PATH).then(res => {
 	Promise.all(
 		res.data
@@ -19,6 +33,8 @@ axios.get(API_BASE + API_NOTE_PATH).then(res => {
 			.map(
 				file => axios
 					.get(API_BASE + API_NOTE_PATH + '/' + file.id)
+					.then(res => ({file, data: res.data}))
+					/*
 					.then(res => {
 						const repoFilePath = file.title;
 						return new Promise(resolve => {
@@ -31,8 +47,11 @@ axios.get(API_BASE + API_NOTE_PATH).then(res => {
 							});
 						});
 					})
+					*/
 					//.then(res => github.writeAnyway(file.title, res.data.content))
 			)
+	).then(publishGithub);
+	/*
 	).then(results => {
 		results.forEach(result => {
 			if (result.noChangeFile) {
@@ -42,4 +61,5 @@ axios.get(API_BASE + API_NOTE_PATH).then(res => {
 			}
 		});
 	});
+	*/
 });
