@@ -197,7 +197,7 @@ const collectByAccountPromises = [];
 });
 
 // accounts only track anonymous plurks
-['SCHIPHOL', 'HOTELDELLUNA'].forEach((account) => {
+['SCHIPHOL', 'HOTELDELLUNA', 'VIOOL'].forEach((account) => {
     ['my', 'replurked'].forEach(target => {
         collectByAccountPromises.push(new Promise((resolve) => {
             backupPlurk(new Date(), {
