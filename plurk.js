@@ -183,7 +183,7 @@ const collectByAccountPromises = [];
 
 // accounts full backup 
 //['SMULLERS'].forEach((account) => {
-['SMULLERS', 'BLOODRAYNE'].forEach((account) => {
+['SMULLERS', 'BLOODRAYNE', 'VIOOL'].forEach((account) => {
     ['my', 'replurked'].forEach(target => {
     //['my'].forEach(target => {
         collectByAccountPromises.push(new Promise((resolve) => {
@@ -197,7 +197,7 @@ const collectByAccountPromises = [];
 });
 
 // accounts only track anonymous plurks
-['SCHIPHOL', 'HOTELDELLUNA', 'VIOOL'].forEach((account) => {
+['SCHIPHOL', 'HOTELDELLUNA'].forEach((account) => {
     ['my', 'replurked'].forEach(target => {
         collectByAccountPromises.push(new Promise((resolve) => {
             backupPlurk(new Date(), {
