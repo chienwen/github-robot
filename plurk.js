@@ -41,7 +41,7 @@ function extractExtendedResource(url) {
             resTaskCount += 1;
             enrichRes(url).then((res) => {
                 resTaskCount -= 1;
-                logger.info('Remaining resource to fetch', resTaskCount);
+                (resTaskCount % 20 === 0) && logger.info('Remaining resource to fetch', resTaskCount);
                 resolve(res);
             }).catch((err) => {
                 logger.info('extractExtendedResource to reject');
@@ -183,6 +183,7 @@ const collectByAccountPromises = [];
 
 // accounts full backup 
 //['SMULLERS'].forEach((account) => {
+//[].forEach((account) => {
 ['SMULLERS', 'BLOODRAYNE', 'VIOOL'].forEach((account) => {
     ['my', 'replurked'].forEach(target => {
     //['my'].forEach(target => {
@@ -197,8 +198,11 @@ const collectByAccountPromises = [];
 });
 
 // accounts only track anonymous plurks
-['SCHIPHOL', 'HOTELDELLUNA'].forEach((account) => {
+//['SCHIPHOL', 'HOTELDELLUNA'].forEach((account) => {
+//['MEEDCHEN_IG'].forEach((account) => {
+['SCHIPHOL', 'HOTELDELLUNA', 'MEEDCHEN_IG'].forEach((account) => {
     ['my', 'replurked'].forEach(target => {
+    //['my'].forEach(target => {
         collectByAccountPromises.push(new Promise((resolve) => {
             backupPlurk(new Date(), {
                 id: config('PLURK_' + account + '_USER_ID'),
