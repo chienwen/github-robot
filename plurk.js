@@ -200,7 +200,8 @@ const collectByAccountPromises = [];
 // accounts only track anonymous plurks
 //['SCHIPHOL', 'HOTELDELLUNA'].forEach((account) => {
 //['MEEDCHEN_IG'].forEach((account) => {
-['SCHIPHOL', 'HOTELDELLUNA', 'MEEDCHEN_IG'].forEach((account) => {
+//['SCHIPHOL', 'HOTELDELLUNA', 'MEEDCHEN_IG'].forEach((account) => {
+['SCHIPHOL', 'MEEDCHEN_IG', 'HORMUZ'].forEach((account) => {
     ['my', 'replurked'].forEach(target => {
     //['my'].forEach(target => {
         collectByAccountPromises.push(new Promise((resolve) => {
