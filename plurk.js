@@ -246,8 +246,8 @@ const collectByAccountPromises = [];
 // accounts only track anonymous plurks
 //['SCHIPHOL', 'MEEDCHEN_IG', 'HORMUZ'].forEach((account) => {
 //['SCHIPHOL', 'MEEDCHEN_IG', 'HORMUZ'].forEach((account) => {
-['SCHIPHOL', 'MEEDCHEN_IG'].forEach((account) => {
-//['SCHIPHOL', 'MEEDCHEN_IG', 'SERCK', 'PEGGY146'].forEach((account) => {
+//['SCHIPHOL', 'MEEDCHEN_IG'].forEach((account) => {
+['SCHIPHOL', 'MEEDCHEN_IG', 'SERCK', 'PEGGY146'].forEach((account) => {
     ['my', 'replurked'].forEach((target) => {
         collectByAccountPromises.push(new Promise((resolve) => {
             backupPlurk(new Date(), userFor(account, {
