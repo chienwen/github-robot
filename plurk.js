@@ -6,6 +6,18 @@ const dashdash = require('dashdash');
 const _ = require('lodash');
 const logger = require('./lib/logger');
 
+// Safety nets: log instead of dying silently, and survive a stray stack overflow
+// from a third-party parser. Anything else is a real bug: exit non-zero for cron.
+process.on('unhandledRejection', (err) => {
+    logger.warn('unhandledRejection', err && err.stack || err);
+});
+process.on('uncaughtException', (err) => {
+    logger.warn('uncaughtException', err && err.stack || err);
+    if (!(err instanceof RangeError)) {
+        process.exit(1);
+    }
+});
+
 const argOptions = dashdash.parse({options: [
     {
         name: 'fetch-count-limit',
@@ -28,28 +40,61 @@ const FETCH_BATCH_SIZE = argOptions.fetch_batch_size || 20;
 const FETCH_COUNT_LIMIT = argOptions.fetch_count_limit || 99999999;
 const FETCH_DATE_LIMIT = argOptions.fetch_date_limit ? new Date(argOptions.fetch_date_limit) : null;
 
+const RES_MAX_CONCURRENT = 10;      // max simultaneous link fetches
+const RES_HARD_TIMEOUT_MS = 60000;  // a link can never block the whole backup longer than this
+
 const processPlurkPromises = [];
 let fetchedCount = 0;
 let resTaskCount = 0;
+let resActive = 0;
+const resQueue = [];
 
-function extractExtendedResource(url) {
-    return new Promise((resolve, reject) => {
-        if (token = url.match(/^https:\/\/images\.plurk\.com\/([^\/]+)$/)) {
-            resolve({});
-        } else {
-            logger.info('Will fetch resource', url);
-            resTaskCount += 1;
-            enrichRes(url).then((res) => {
-                resTaskCount -= 1;
-                (resTaskCount % 20 === 0) && logger.info('Remaining resource to fetch', resTaskCount);
-                resolve(res);
-            }).catch((err) => {
-                logger.info('extractExtendedResource to reject');
-                resTaskCount -= 1;
-                //reject({err, url});
-                resolve({});
+function runLimited(task) {
+    return new Promise((resolve) => {
+        const run = () => {
+            resActive += 1;
+            task().then(resolve, () => resolve({})).then(() => {
+                resActive -= 1;
+                const next = resQueue.shift();
+                if (next) {
+                    next();
+                }
             });
+        };
+        if (resActive < RES_MAX_CONCURRENT) {
+            run();
+        } else {
+            resQueue.push(run);
         }
+    });
+}
+
+function withTimeout(promise, ms, label) {
+    let timer;
+    const timeout = new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('timeout: ' + label)), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+// Never rejects: a broken link must not break the backup.
+function extractExtendedResource(url) {
+    if (/^https:\/\/images\.plurk\.com\/([^\/]+)$/.test(url)) {
+        return Promise.resolve({});
+    }
+    logger.info('Will fetch resource', url);
+    resTaskCount += 1;
+    return runLimited(() => {
+        logger.info('Fetching resource', url);
+        return withTimeout(enrichRes(url), RES_HARD_TIMEOUT_MS, url);
+    }).then((res) => {
+        resTaskCount -= 1;
+        (resTaskCount % 20 === 0) && logger.info('Remaining resource to fetch', resTaskCount);
+        return res || {};
+    }, (err) => {
+        resTaskCount -= 1;
+        logger.info('extractExtendedResource failed', url, err && err.message);
+        return {};
     });
 }
 
@@ -70,8 +115,8 @@ function getRandomInfo(content) {
 }
 
 function processPlurk(plurk, myPlurkId) {
-    processPlurkPromises.push(new Promise((resolve, reject) => {
-        const dObj =  new Date(plurk.posted);
+    processPlurkPromises.push(new Promise((resolve) => {
+        const dObj = new Date(plurk.posted);
         const data = {
             id: 'pl' + plurk.plurk_id,
             by: myPlurkId / 1,
@@ -105,9 +150,8 @@ function processPlurk(plurk, myPlurkId) {
                 _.assign(data.res, edata);
                 resolve(data);
             }).catch((err) => {
-                logger.warn('Unable to fetch resource', err.url, err.err, 'when backup', plurkLib.getPlurkUrlFromId(plurk.plurk_id));
+                logger.warn('Unable to fetch resource', data.res.url, err, 'when backup', plurkLib.getPlurkUrlFromId(plurk.plurk_id));
                 resolve(data); // skip broken resource
-                reject(err);
             });
         }
         else {
@@ -117,7 +161,8 @@ function processPlurk(plurk, myPlurkId) {
 }
 
 function backupPlurk(dateTimeFrom, user, resolve, target) {
-    logger.info('backup start at', dateTimeFrom, user);
+    // Don't log the whole user object: it contains the OAuth token and secret.
+    logger.info('backup start at', dateTimeFrom, 'user', user.id, target);
     const request = {
         limit: FETCH_BATCH_SIZE,
         filter: target,
@@ -142,8 +187,8 @@ function backupPlurk(dateTimeFrom, user, resolve, target) {
                 fetchedCount += plurks.length;
                 plurks.filter((plurk) => {
                     // use owner_id not user_id or plurk may return other people's plurks
-                    if (plurk.owner_id == user.id 
-                            || plurk.replurked 
+                    if (plurk.owner_id == user.id
+                            || plurk.replurked
                             || (plurk.anonymous && plurk.user_id == user.id)
                             ) {
                         if (user.isValidOnly) {
@@ -179,54 +224,54 @@ function backupPlurk(dateTimeFrom, user, resolve, target) {
     );
 }
 
+function userFor(account, extra) {
+    return _.assign({
+        id: config('PLURK_' + account + '_USER_ID'),
+        token: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN'),
+        secret: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN_SECRET'),
+    }, extra);
+}
+
 const collectByAccountPromises = [];
 
-// accounts full backup 
-//['SMULLERS'].forEach((account) => {
-//[].forEach((account) => {
+// accounts full backup
 ['SMULLERS', 'BLOODRAYNE', 'VIOOL'].forEach((account) => {
-    ['my', 'replurked'].forEach(target => {
-    //['my'].forEach(target => {
+    ['my', 'replurked'].forEach((target) => {
         collectByAccountPromises.push(new Promise((resolve) => {
-            backupPlurk(new Date(), {
-                id: config('PLURK_' + account + '_USER_ID'),
-                token: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN'),
-                secret: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN_SECRET'),
-            }, resolve, target);
+            backupPlurk(new Date(), userFor(account), resolve, target);
         }));
     });
 });
 
 // accounts only track anonymous plurks
-//['SCHIPHOL', 'HOTELDELLUNA'].forEach((account) => {
-//['MEEDCHEN_IG'].forEach((account) => {
-//['SCHIPHOL', 'HOTELDELLUNA', 'MEEDCHEN_IG'].forEach((account) => {
-['SCHIPHOL', 'MEEDCHEN_IG', 'HORMUZ'].forEach((account) => {
-    ['my', 'replurked'].forEach(target => {
-    //['my'].forEach(target => {
+//['SCHIPHOL', 'MEEDCHEN_IG', 'HORMUZ'].forEach((account) => {
+//['SCHIPHOL', 'MEEDCHEN_IG', 'HORMUZ'].forEach((account) => {
+['SCHIPHOL', 'MEEDCHEN_IG'].forEach((account) => {
+//['SCHIPHOL', 'MEEDCHEN_IG', 'SERCK', 'PEGGY146'].forEach((account) => {
+    ['my', 'replurked'].forEach((target) => {
         collectByAccountPromises.push(new Promise((resolve) => {
-            backupPlurk(new Date(), {
-                id: config('PLURK_' + account + '_USER_ID'),
-                token: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN'),
-                secret: config('PLURK_' + account + '_OAUTH_ACCESS_TOKEN_SECRET'),
+            backupPlurk(new Date(), userFor(account, {
                 isValidOnly: function (plurk) {
                     return plurk.anonymous;
                 },
-            }, resolve, target);
+            }), resolve, target);
         }));
     });
 });
 
 Promise.all(collectByAccountPromises).then(() => {
-        
+
     // Debugging, don't push
-    //Promise.all(processPlurkPromises).then((items) => {
+    //return Promise.all(processPlurkPromises).then((items) => {
     //    console.log('final output', require('util').inspect(items, {showHidden: false, depth: null, maxArrayLength: null}))
-    //}); 
-    //return;
+    //});
 
-    Promise.all(processPlurkPromises).then(githubDiary.publishDiaryItems).then(() => {
-        logger.info('All done.');
-    });
+    return Promise.all(processPlurkPromises)
+        .then(githubDiary.publishDiaryItems)
+        .then(() => {
+            logger.info('All done.');
+        });
+}).catch((err) => {
+    logger.warn('Backup failed', err && err.stack || err);
+    process.exit(1);
 });
-
